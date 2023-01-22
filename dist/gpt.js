@@ -1,8 +1,8 @@
 import { ChatGPTAPIBrowser } from 'chatgpt';
 export async function initGPT() {
     const api = new ChatGPTAPIBrowser({
-        email: 'gleb.khmyznikov@gmail.com',
-        password: 'u!qJ8P-M-uQzjXB',
+        email: process.env.EMAIL,
+        password: process.env.PASS,
     });
     try {
         await api.initSession();
