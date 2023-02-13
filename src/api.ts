@@ -1,8 +1,10 @@
 import express, { Express, Request, Response } from 'express';
 import fetch, { RequestInit } from 'node-fetch';
 import dotenv from 'dotenv';
-import { askGPT, initGPT } from './gpt.js';
-import { ChatGPTAPIBrowser } from 'chatgpt';
+// import { askGPT, initGPT } from './gpt.js';
+import { initOpenAI, askOpenAI } from './openai.js';
+// import { ChatGPTAPIBrowser } from 'chatgpt';
+import { OpenAIApi } from 'openai';
 
 dotenv.config();
 
@@ -11,10 +13,10 @@ const port = process.env.PORT || 3000;
 
 app.use(express.json());
 
-let GPTSesion: ChatGPTAPIBrowser | null = null;
+let GPTSesion: OpenAIApi | null = null;
 
 app.get('/initAPI', async (req: Request, res: Response) => {
-  GPTSesion = await initGPT();
+  GPTSesion = await initOpenAI();
   if (GPTSesion){
     res.status(200).send({message: 'GPT initialized'});
   }
@@ -45,7 +47,7 @@ app.get('/generateManifest', async (req: Request, res: Response) => {
   }
   
   if (headerHTML){
-    const manifest = await askGPT(headerHTML, GPTSesion);
+    const manifest = await askOpenAI(headerHTML, GPTSesion);
     if (manifest) {
       res.status(200).send({manifest});
     }
@@ -58,6 +60,7 @@ app.get('/generateManifest', async (req: Request, res: Response) => {
 });
 
 app.post('/generateWinPackage', async (req: Request, res: Response) => {
+  return;
   if (!req.body?.manifest){
     res.status(400).send({error: 'Manifest not specified'});
     return;

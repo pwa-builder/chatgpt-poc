@@ -1,14 +1,15 @@
 import express from 'express';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
-import { askGPT, initGPT } from './gpt.js';
+// import { askGPT, initGPT } from './gpt.js';
+import { initOpenAI, askOpenAI } from './openai.js';
 dotenv.config();
 const app = express();
 const port = process.env.PORT || 3000;
 app.use(express.json());
 let GPTSesion = null;
 app.get('/initAPI', async (req, res) => {
-    GPTSesion = await initGPT();
+    GPTSesion = await initOpenAI();
     if (GPTSesion) {
         res.status(200).send({ message: 'GPT initialized' });
     }
@@ -34,7 +35,7 @@ app.get('/generateManifest', async (req, res) => {
         return;
     }
     if (headerHTML) {
-        const manifest = await askGPT(headerHTML, GPTSesion);
+        const manifest = await askOpenAI(headerHTML, GPTSesion);
         if (manifest) {
             res.status(200).send({ manifest });
         }
@@ -46,6 +47,7 @@ app.get('/generateManifest', async (req, res) => {
     }
 });
 app.post('/generateWinPackage', async (req, res) => {
+    return;
     if (!req.body?.manifest) {
         res.status(400).send({ error: 'Manifest not specified' });
         return;

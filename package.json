@@ -9,7 +9,13 @@
     "start": "node dist/api.js",
     "dev": "concurrently \"npx tsc --watch\" \"nodemon -q dist/api.js\""
   },
-  "keywords": ["pwa", "chatbot", "gpt", "llm", "pwabuilder"],
+  "keywords": [
+    "pwa",
+    "chatbot",
+    "gpt",
+    "llm",
+    "pwabuilder"
+  ],
   "author": "khmyznikov",
   "license": "MIT",
   "dependencies": {
@@ -19,6 +25,7 @@
     "fs": "^0.0.1-security",
     "lit": "^2.6.1",
     "node-fetch": "^3.3.0",
+    "openai": "^3.1.0",
     "puppeteer": "^19.5.2",
     "vite": "^4.0.4"
   },
