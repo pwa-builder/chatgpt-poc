@@ -1,21 +1,22 @@
 import express from 'express';
 import fetch from 'node-fetch';
+import { JSDOM } from 'jsdom';
 import dotenv from 'dotenv';
 // import { askGPT, initGPT } from './gpt.js';
-import { initOpenAI, askOpenAI } from './openai.js';
+import { initOpenAI, askOpenAI, manifestPrompt } from './openai.js';
 dotenv.config();
 const app = express();
 const port = process.env.PORT || 3000;
 app.use(express.json());
-let GPTSesion = null;
+let OpenAISesion = null;
 app.get('/initAPI', async (req, res) => {
-    GPTSesion = await initOpenAI();
-    if (GPTSesion) {
-        res.status(200).send({ message: 'GPT initialized' });
+    OpenAISesion = await initOpenAI();
+    if (OpenAISesion) {
+        res.status(200).send({ message: 'LLM initialized' });
     }
     else {
-        GPTSesion = null;
-        res.status(500).send({ error: 'GPT unavailable' });
+        OpenAISesion = null;
+        res.status(500).send({ error: 'LLM unavailable' });
     }
 });
 app.get('/generateManifest', async (req, res) => {
@@ -23,28 +24,38 @@ app.get('/generateManifest', async (req, res) => {
         res.status(400).send({ error: 'URL not specified' });
         return;
     }
-    const request = await fetch(req.query.url.toString());
+    if (!OpenAISesion) {
+        res.status(500).send({ error: 'API not initialized' });
+        return;
+    }
+    const request = await fetch(req.query.url.toString(), {
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        }
+    });
     let rawHTML = await request.text();
     let headerHTML;
     if (typeof rawHTML === 'string') {
         rawHTML = rawHTML.replace(/\r|\n/g, '').replace(/\s{2,}/g, '');
-        headerHTML = /<head>(.*)<\/head>/.test(rawHTML) ? rawHTML.match(/<head>(.*)<\/head>/)[0] : 'Head not found';
+        headerHTML = /<head>(.*)<\/head>/.test(rawHTML) ? rawHTML.match(/<head>(.*)<\/head>/)[0] : null;
     }
-    if (!GPTSesion) {
-        res.status(500).send({ error: 'API not initialized' });
+    if (!headerHTML) {
+        res.status(400).send({ error: '<head> HTML not found' });
         return;
     }
-    if (headerHTML) {
-        const manifest = await askOpenAI(headerHTML, GPTSesion);
-        if (manifest) {
-            res.status(200).send({ manifest });
-        }
-        else
-            res.status(400).send({ error: 'GPT unavailable or failed to generate manifest' });
+    console.log(`HEAD: ${headerHTML}`);
+    const document = new JSDOM(headerHTML).window.document;
+    document.querySelectorAll('script').forEach((script) => script?.remove?.());
+    document.querySelectorAll('style').forEach((style) => style?.remove?.());
+    document.querySelectorAll('meta[http-equiv="origin-trial"],meta[http-equiv="content-type"],meta[name="google-site-verification"]').forEach((meta) => meta?.remove?.());
+    document.querySelectorAll('link[rel="stylesheet"],link[rel="modulepreload"],link[rel="preload"],link[rel="dns-prefetch"],link[rel="preload"]').forEach((link) => link?.remove?.());
+    const preparedHTML = document.head.innerHTML.replace(/&amp;|&{2,}|<!--|-->/g, '');
+    const manifest = await askOpenAI(manifestPrompt(preparedHTML), OpenAISesion);
+    if (manifest) {
+        res.status(200).send({ manifest });
     }
-    else {
-        res.status(400).send({ error: '<head> HTML not found' });
-    }
+    else
+        res.status(400).send({ error: 'LLM unavailable or failed to generate manifest' });
 });
 app.post('/generateWinPackage', async (req, res) => {
     return;

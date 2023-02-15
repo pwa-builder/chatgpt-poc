@@ -7,17 +7,32 @@ export async function initOpenAI(): Promise<OpenAIApi | null> {
 	return new OpenAIApi(configuration);
 }
 
+export function manifestPrompt(html: string) {
+const prompt = 
+`INSTRUCTION
+parse this html and generate web manifest with this string properties: lang,name[max lenght 45],short_name[max lenght 12],description[max lenght 160],background_color[hex],dir,display,orientation,scope,start_url,theme_color[hex]. And array properties: categories[max lenght 3],icons[max lenght 1]. Take all information and icons from html, use only biggest icon in array of icons.
+HTML
+${html}
+OUTPUT FILE
+web app manifests in JSON format no new line or return symbols, compact: <code>`;
+return prompt;
+}
+
 
 export async function askOpenAI(prompt: string, openai: OpenAIApi): Promise<Object|null> {
-	let gptAnswer = null;
+	let davinciAnswer = null;
+	console.log(`prompt: ${prompt}`);
+
 	try {
 		const completion = await openai.createCompletion({
-			model: "text-davinci-003",
-			prompt: `parse this html and generate web manifest in JSON format, silent answer with no comments or explains. Take all information and icons from html tags, use only one biggest icon in array of icons. ${prompt}`,
-			temperature: 0.6,
+			model: "code-davinci-002",
+			prompt,
+			temperature: 0.1,
+			max_tokens: 256,
+			
 		});
-		gptAnswer = completion.data;
-		console.warn(gptAnswer)
+		davinciAnswer = completion.data;
+		console.log(`answer: ${JSON.stringify(davinciAnswer)}`)
 	} catch(error: any) {
 
 		if (error?.response) {
@@ -28,10 +43,12 @@ export async function askOpenAI(prompt: string, openai: OpenAIApi): Promise<Obje
 	}
   
 	let manifest = null;
-	if (gptAnswer && gptAnswer.choices[0].text)
+	if (davinciAnswer?.choices && davinciAnswer.choices[0]?.text){
+		const restoredResponse = `<code>${davinciAnswer.choices[0].text}`;
 		try {
-			manifest = JSON.parse(gptAnswer.choices[0].text);
+			manifest = JSON.parse(restoredResponse.match(/<code>(.*)<\/code>/)![1]);
 		} catch (error) {}
+	}
 
 	return manifest;
 }
