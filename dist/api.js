@@ -2,8 +2,7 @@ import express from 'express';
 import fetch from 'node-fetch';
 import { JSDOM } from 'jsdom';
 import dotenv from 'dotenv';
-// import { askGPT, initGPT } from './gpt.js';
-import { initOpenAI, askOpenAI, manifestPrompt } from './openai.js';
+import { initOpenAI, askForManifest, askForDescription, askForIcon, manifestPrompt, descriptionPrompt } from './openai.js';
 dotenv.config();
 const app = express();
 const port = process.env.PORT || 3000;
@@ -30,7 +29,8 @@ app.get('/generateManifest', async (req, res) => {
     }
     const request = await fetch(req.query.url.toString(), {
         headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36 Edg/110.0.1587.40',
+            'Accept-Language': 'en-US'
         }
     });
     let rawHTML = await request.text();
@@ -49,13 +49,32 @@ app.get('/generateManifest', async (req, res) => {
     document.querySelectorAll('style').forEach((style) => style?.remove?.());
     document.querySelectorAll('meta[http-equiv="origin-trial"],meta[http-equiv="content-type"],meta[name="google-site-verification"]').forEach((meta) => meta?.remove?.());
     document.querySelectorAll('link[rel="stylesheet"],link[rel="modulepreload"],link[rel="preload"],link[rel="dns-prefetch"],link[rel="preload"]').forEach((link) => link?.remove?.());
-    const preparedHTML = document.head.innerHTML.replace(/&amp;|&{2,}|<!--|-->/g, '');
-    const manifest = await askOpenAI(manifestPrompt(preparedHTML), OpenAISesion);
+    const preparedHTML = document.head.innerHTML.replace(/&amp;|&{2,}|<!--(.*?)-->/g, '');
+    const manifest = await askForManifest(manifestPrompt(preparedHTML), OpenAISesion);
+    let icon = null;
+    if (manifest?.description?.length > 0) {
+        const description = await askForDescription(descriptionPrompt(manifest.description), OpenAISesion);
+        if (description)
+            icon = await askForIcon(description, OpenAISesion);
+    }
     if (manifest) {
-        res.status(200).send({ manifest });
+        res.status(200).send({ manifest, icon });
     }
     else
         res.status(400).send({ error: 'LLM unavailable or failed to generate manifest' });
+});
+app.get('/generateManifestLegacy', async (req, res) => {
+    if (!req.query.url) {
+        res.status(400).send({ error: 'URL not specified' });
+        return;
+    }
+    const request = await fetch(`https://pwabuilder-manifest-creator.azurewebsites.net/api/create?url=${req.query.url.toString()}`);
+    if (request.status != 200) {
+        res.status(400).send({ error: 'pwabuilder API unavailable or failed to generate manifest' });
+        return;
+    }
+    const manifest = await request.json();
+    res.status(200).send({ manifest });
 });
 app.post('/generateWinPackage', async (req, res) => {
     return;
@@ -79,8 +98,6 @@ app.post('/generateWinPackage', async (req, res) => {
         res.status(400).send({ error: 'Manifest has no icons' });
         return;
     }
-    // {"name":"Microsoft Apps","short_name":"Microsoft Apps","start_url":"/","display":"standalone","theme_color":"#ffffff","background_color":"#ffffff","description":"Make Microsoft Windows your own with apps and themes that help you personalise Windows and be more productive.","icons":[{"src":"/store/images/logo-16x16.png?v=lOdDASudWX5I0YkpCu1DicAbwXJ87mUk-1A_lczTIEc","sizes":"16x16","type":"image/png"},{"src":"/store/images/logo-32x32.png?v=gBZzyJYt3-JPdgfYPGGoJ0bEEL2ozU5k4XVSpXSC3Ts","sizes":"32x32","type":"image/png"},{"src":"/store/images/logo-64x64.png?v=goKXuTDLKbFD3lo_TP4Vtbi7zdyQKKDs7GzLl-kv7K4","sizes":"64x64","type":"image/png"},{"src":"/store/images/logo-128x128.png?v=Gw_i5pK1zHf0Cp_XZ8FyU3fYU3JgX9W0x8aZU0-L5j4","sizes":"128x128","type":"image/png"},{"src":"/store/images/logo-256x256.png?v=vIx_WpJnNgKj-L5o_v5S5MjK5S5Jm7z9aF5xV1-L5j4","sizes":"256x256","type":"image/png"},{"src":"/store/images/logo-512x512.png?v=YsT9zC0xhEZ3q3Zb1OJh1fKj-L5o_v5S5MjK5S5Jm7z9","sizes":"512x512","type":"image/png"}]}
-    // "backgroundColor":"#FFFFFF",
     let payload = {
         "name": (manifest.name || manifest.short_name || "Web Application"),
         "packageId": "PWA.ChatGPT.PoC",
