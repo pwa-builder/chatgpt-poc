@@ -21,7 +21,7 @@ return prompt;
 export function descriptionPrompt(description: string) {
 const prompt = 
 `INSTRUCTION
-Write a very detailed description of minimalistic app icon based on app description. The icon should be without text. Don't include in result the feelings, meanings, explanations, representing, symbolizing and quotes.
+Write a very detailed description of minimalistic app icon based on app description. The icon shouldn't contain text. Don't include in description the words about feelings, meanings, explanations, representing, signifying, symbolizing, quotes, reflects or ideas.
 DESCRIPTION
 ${description}
 RESULT`;
@@ -70,7 +70,7 @@ export async function askForDescription(prompt: string, openai: OpenAIApi): Prom
 		const completion = await openai.createCompletion({
 			model: "text-davinci-003",
 			prompt,
-			temperature: 1,
+			temperature: 0.5,
 			max_tokens: 128,
 			
 		});
@@ -97,7 +97,7 @@ export async function askForIcon(prompt: string, openai: OpenAIApi): Promise<Obj
 
 	try {
 		const image = await openai.createImage({
-			prompt: `${prompt}, minimalistic, no text, filled background`,
+			prompt: `${prompt}, ios app icon, no text, background colorful is filled abstract gradient`,
 			n: 1,
 			size: '256x256',
 			response_format: 'url'
