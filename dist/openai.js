@@ -15,11 +15,11 @@ web app manifests in JSON format no new line or return symbols, compact: <code>`
     return prompt;
 }
 export function descriptionPrompt(description) {
-    const prompt = `INSTRUCTION
-Write a very detailed description of minimalistic app icon based on app description. The icon shouldn't contain text. Don't include in description the words about feelings, meanings, explanations, representing, signifying, symbolizing, quotes, reflects or ideas.
-DESCRIPTION
+    const prompt = `TASK
+Describe the app icon without emotional details, based on INPUT. Description should not contain text or symbols.
+INPUT
 ${description}
-RESULT`;
+OUTPUT`;
     return prompt;
 }
 export async function askForManifest(prompt, openai) {
@@ -84,8 +84,8 @@ export async function askForIcon(prompt, openai) {
     console.log(`icon prompt: ${prompt}`);
     try {
         const image = await openai.createImage({
-            prompt: `${prompt}, ios app icon, no text, background colorful is filled abstract gradient`,
-            n: 1,
+            prompt: `${prompt}, ios app icon, no text, colorful background is filled with abstract gradient`,
+            n: 4,
             size: '256x256',
             response_format: 'url'
         });
